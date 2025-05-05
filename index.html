@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>テニススコア字幕アプリ（YouTube読み込み対応）</title>
+  <style>
+    body { font-family: Arial; padding: 20px; }
+    button { margin: 3px; }
+    .score-section { margin-bottom: 10px; }
+    .subtitle-item { margin: 5px 0; }
+  </style>
+</head>
+<body>
+  <h1>テニススコア字幕アプリ</h1>
+
+  <label>YouTube動画ID（例: dQw4w9WgXcQ）: 
+    <input type="text" id="youtubeId" value="dQw4w9WgXcQ">
+  </label>
+  <button id="loadBtn">動画読み込み</button><br><br>
+
+  <div id="player"></div><br>
+
+  <table>
+    <tr>
+      <th></th>
+      <th>Player 1</th>
+      <th>Player 2</th>
+    </tr>
+    <tr>
+      <td>名前</td>
+      <td><input type="text" id="player1" value="Player 1"></td>
+      <td><input type="text" id="player2" value="Player 2"></td>
+    </tr>
+    <tr>
+      <td>サーブ権</td>
+      <td><input type="radio" name="server" id="serveP1" value="p1" checked></td>
+      <td><input type="radio" name="server" id="serveP2" value="p2"></td>
+    </tr>
+    <tr>
+      <td>ゲーム数</td>
+      <td>
+        <span id="p1Game">0</span>
+        <button onclick="adjustGame('p1',1)">＋</button>
+        <button onclick="adjustGame('p1',-1)">−</button>
+      </td>
+      <td>
+        <span id="p2Game">0</span>
+        <button onclick="adjustGame('p2',1)">＋</button>
+        <button onclick="adjustGame('p2',-1)">−</button>
+      </td>
+    </tr>
+    <tr>
+      <td>ポイント</td>
+      <td>
+        <span id="p1Point">0</span>
+        <button onclick="adjustPoint('p1',1)">＋</button>
+        <button onclick="adjustPoint('p1',-1)">−</button>
+      </td>
+      <td>
+        <span id="p2Point">0</span>
+        <button onclick="adjustPoint('p2',1)">＋</button>
+        <button onclick="adjustPoint('p2',-1)">−</button>
+      </td>
+    </tr>
+  </table>
+
+  <label><input type="checkbox" id="autoSubtitle">自動字幕追加</label><br><br>
+
+  <button onclick="resetGames()">ゲーム数リセット（両Player）</button>
+  <button onclick="resetPoints()">ポイントリセット（両Player）</button><br><br>
+
+  <button onclick="addSubtitle()">現在スコアを字幕に入れる</button>
+  <button onclick="addSubtitleOff()">字幕オフ</button><br><br>
+
+  <button onclick="downloadVTT()">字幕(VTT)ファイルをダウンロード</button><br><br>
+
+  <input type="file" id="vttFileInput" accept=".vtt">
+  <button onclick="loadVTTFile()">字幕(VTT)ファイル読み込み</button>
+
+  <h2>字幕リスト（時刻順）</h2>
+  <ul id="subtitleList"></ul>
+
+  <h2>生成された字幕データ</h2>
+  <textarea id="vttOutput" rows="12" readonly style="width:100%;"></textarea>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let player;
+    const pointsOrder = ['0', '15', '30', '40', 'Adv'];
+    let p1Game = 0, p1Point = 0;
+    let p2Game = 0, p2Point = 0;
+    let subtitles = []; // { time, line1, line2 }
+
+    function onYouTubeIframeAPIReady() {
+      document.getElementById('loadBtn').addEventListener('click', () => {
+        const videoId = document.getElementById('youtubeId').value;
+        if (player) {
+          player.loadVideoById(videoId);
+        } else {
+          player = new YT.Player('player', {
+            height: '360',
+            width: '640',
+            videoId: videoId
+          });
+        }
+      });
+    }
+
+    function adjustGame(playerKey, delta) {
+      if (playerKey === 'p1') {
+        p1Game = Math.max(0, p1Game + delta);
+        document.getElementById('p1Game').textContent = p1Game;
+      } else {
+        p2Game = Math.max(0, p2Game + delta);
+        document.getElementById('p2Game').textContent = p2Game;
+      }
+      if (document.getElementById('autoSubtitle').checked) addSubtitle();
+    }
+
+    function adjustPoint(playerKey, delta) {
+      if (playerKey === 'p1') {
+        p1Point = (p1Point + delta + pointsOrder.length) % pointsOrder.length;
+        document.getElementById('p1Point').textContent = pointsOrder[p1Point];
+      } else {
+        p2Point = (p2Point + delta + pointsOrder.length) % pointsOrder.length;
+        document.getElementById('p2Point').textContent = pointsOrder[p2Point];
+      }
+      if (document.getElementById('autoSubtitle').checked) addSubtitle();
+    }
+
+    function resetGames() {
+      p1Game = 0;
+      p2Game = 0;
+      document.getElementById('p1Game').textContent = p1Game;
+      document.getElementById('p2Game').textContent = p2Game;
+    }
+
+    function resetPoints() {
+      p1Point = 0;
+      p2Point = 0;
+      document.getElementById('p1Point').textContent = pointsOrder[p1Point];
+      document.getElementById('p2Point').textContent = pointsOrder[p2Point];
+    }
+
+    function toggleServe(playerKey) {
+      if (playerKey === 'p1') {
+        document.getElementById('serveP2').checked = false;
+      } else {
+        document.getElementById('serveP1').checked = false;
+      }
+    }
+
+    function addSubtitle() {
+      if (!player) { alert('動画が読み込まれていません'); return; }
+      const time = player.getCurrentTime();
+
+      let p1Name = document.getElementById('player1').value || 'Player 1';
+      let p2Name = document.getElementById('player2').value || 'Player 2';
+
+      if (document.getElementById('serveP1').checked) {
+        p1Name = '*' + p1Name;
+      } else {
+        p2Name = '*' + p2Name;
+      }
+
+      const line1 = `${p1Name}: ${p1Game} ${pointsOrder[p1Point]}`;
+      const line2 = `${p2Name}: ${p2Game} ${pointsOrder[p2Point]}`;
+
+      subtitles.push({ time, line1, line2 });
+      updateSubtitleList();
+      updateVTT();
+    }
+
+    function updateSubtitleList() {
+      const list = document.getElementById('subtitleList');
+      list.innerHTML = '';
+
+      subtitles.sort((a,b)=>a.time - b.time);
+      subtitles.forEach((s, index) => {
+        const li = document.createElement('li');
+        let displayLine = (s.line1 || s.line2) ? `"${s.line1} / ${s.line2}"` : '字幕オフ';
+        li.textContent = `${index + 1}: ${formatTime(s.time)} - ${displayLine}`;
+
+        const editBtn = document.createElement('button');
+        editBtn.textContent = '編集';
+        editBtn.onclick = () => editSubtitle(index);
+
+        const delBtn = document.createElement('button');
+        delBtn.textContent = '削除';
+        delBtn.onclick = () => { subtitles.splice(index,1); updateSubtitleList(); updateVTT(); };
+
+        li.appendChild(editBtn);
+        li.appendChild(delBtn);
+        list.appendChild(li);
+      });
+    }
+
+    function editSubtitle(index) {
+      const newTime = prompt('新しい時間（秒）', subtitles[index].time);
+      if (newTime !== null && !isNaN(newTime)) {
+        subtitles[index].time = parseFloat(newTime);
+        const newLine1 = prompt('1行目のテキスト', subtitles[index].line1);
+        const newLine2 = prompt('2行目のテキスト', subtitles[index].line2);
+        if (newLine1 !== null) subtitles[index].line1 = newLine1;
+        if (newLine2 !== null) subtitles[index].line2 = newLine2;
+        updateSubtitleList();
+        updateVTT();
+      }
+    }
+
+    function updateVTT() {
+      let vtt = "WEBVTT\n\n";
+      subtitles.sort((a,b)=>a.time-b.time).forEach((s, i) => {
+        const start = formatTime(s.time);
+        const end = (i+1 < subtitles.length) ? formatTime(subtitles[i+1].time) : "99:59:59.999";
+        vtt += `${i+1}\n${start} --> ${end}\n${s.line1}\n${s.line2}\n\n`;
+      });
+      document.getElementById('vttOutput').value = vtt;
+    }
+
+    function formatTime(seconds) {
+      const date = new Date(0);
+      date.setSeconds(seconds);
+      const hh = String(date.getUTCHours()).padStart(2,'0');
+      const mm = String(date.getUTCMinutes()).padStart(2,'0');
+      const ss = String(date.getUTCSeconds()).padStart(2,'0');
+      const ms = String(Math.floor((seconds % 1) * 1000)).padStart(3,'0');
+      return `${hh}:${mm}:${ss}.${ms}`;
+    }
+
+    function downloadVTT() {
+      const vtt = document.getElementById('vttOutput').value;
+      const blob = new Blob([vtt], { type: "text/vtt" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = "tennis_score.vtt";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function loadVTTFile() {
+      const fileInput = document.getElementById('vttFileInput');
+      const file = fileInput.files[0];
+      if (!file) { alert('ファイルを選択してください'); return; }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        parseVTT(text);
+      };
+      reader.readAsText(file);
+    }
+
+    function parseVTT(vttText) {
+      subtitles = []; // 既存リスト初期化
+      const blocks = vttText.split(/\n\n+/);
+      for (const block of blocks) {
+        const lines = block.trim().split('\n');
+        if (lines.length >= 3 && lines[1].includes('-->')) {
+          const timeStr = lines[1].split(' --> ')[0];
+          const timeSec = parseTime(timeStr);
+          const line1 = lines[2];
+          const line2 = lines[3] || '';
+          subtitles.push({ time: timeSec, line1, line2 });
+        }
+      }
+      updateSubtitleList();
+      updateVTT();
+    }
+
+    function parseTime(timeStr) {
+      const [hh, mm, ssMs] = timeStr.split(':');
+      const [ss, ms] = ssMs.split('.');
+      return Number(hh) * 3600 + Number(mm) * 60 + Number(ss) + Number(ms) / 1000;
+    }
+
+    function addSubtitleOff() {
+      if (!player) { alert('動画が読み込まれていません'); return; }
+      const time = player.getCurrentTime();
+      subtitles.push({ time, line1: '', line2: '' });
+      updateSubtitleList();
+      updateVTT();
+    }
+
+  </script>
+</body>
+</html>
