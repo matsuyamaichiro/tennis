@@ -2,19 +2,20 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>テニススコア字幕アプリ（YouTube読み込み対応）</title>
+  <title>Youtubeテニス動画スコア字幕作成アプリ</title>
   <style>
     body { font-family: Arial; padding: 20px; }
+    label { font-size: inherit; }
     button { margin: 3px; }
     .score-section { margin-bottom: 10px; }
     .subtitle-item { margin: 5px 0; }
   </style>
 </head>
 <body>
-  <h1>テニススコア字幕アプリ</h1>
+  <h1>Youtubeテニス動画スコア字幕作成アプリ</h1>
 
-  <label>YouTube動画ID（例: dQw4w9WgXcQ）: 
-    <input type="text" id="youtubeId" value="dQw4w9WgXcQ">
+  <label>YouTube動画URL: 
+    <input type="text" id="youtubeUrl" value="">
   </label>
   <button id="loadBtn">動画読み込み</button><br><br>
 
@@ -64,7 +65,8 @@
     </tr>
   </table>
 
-  <label><input type="checkbox" id="autoSubtitle">自動字幕追加</label><br><br>
+  <label><input type="checkbox" id="autoSubtitle" checked>ゲーム数/ポイント変更時に字幕追加</label><br>
+  <label><input type="checkbox" id="autoSwitchServe" checked>ゲーム数変更時にサーブ権切替とポイントリセット</label><br><br>
 
   <button onclick="resetGames()">ゲーム数リセット（両Player）</button>
   <button onclick="resetPoints()">ポイントリセット（両Player）</button><br><br>
@@ -83,6 +85,29 @@
   <h2>生成された字幕データ</h2>
   <textarea id="vttOutput" rows="12" readonly style="width:100%;"></textarea>
 
+  <hr>
+  <h2>このアプリの使い方</h2>
+  <ol>
+    <li>YouTubeにアップロードしたテニス動画のURLを入力して「動画読み込み」ボタンを押します。</li>
+    <li>Player1とPlayer2の名前（ダブルスなら２人分）を入力します。</li>
+    <li>最初にサーブ権を持つPlayerにチェックを入れます。</li>
+    <li>試合開始時に0-0の状態で「字幕を入れる」ボタンを押し、最初の字幕を追加します。</li>
+    <li>動画を再生・一時停止しながら、ポイント数を「+」「−」ボタンで加減すると字幕が更新されます。</li>
+    <li>ゲームを「+」「-」ボタンで加減すると、サーブ権が入れ替わり、ポイントがリセットされ、字幕が更新されます。</li>
+    <li>ゲーム終了時など、字幕を消したい場合は「字幕オフ」ボタンで字幕を非表示にします。</li>
+    <li>動画内で別の試合に切り替わる場合、「ゲーム数リセット」ボタンとと「ポイントリセット」ボタンを押して、Playerの名前指定から再度実施してください。</li>
+    <li>最後に「字幕(VTT)ファイルをダウンロード」ボタンで .vtt ファイルを保存します。</li>
+    <li>ダウンロードした .vtt ファイルをYouTube Studioで動画に字幕としてアップロードしてください。</li>
+  </ol>
+  <ul>
+    <li>字幕リストで「編集」ボタンを押すと、時刻⇒Player1⇒Player2の順で字幕内容を編集できます。</li>
+    <li>字幕リストで「削除」ボタンにより、削除も可能です。</li>
+    <li>現在のゲーム数やポイントを修正するときは、「ゲーム数/ポイント変更時に字幕追加」や「ゲーム数変更時にサーブ権切り替えとポイントリセット」のチェックボックスを一旦OFFにして下さい。</li>
+    <li>.vttファイルを読み込んで編集することもできます。途中から再開するときに便利かも。</li>
+    <li>YouTube Studioで字幕をアップロードできるのは、動画作成者のみです。</li>
+    <li>このアプリの利用によって生じた損害等の責任は負いません。</li>
+  </ul>
+
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     let player;
@@ -93,7 +118,12 @@
 
     function onYouTubeIframeAPIReady() {
       document.getElementById('loadBtn').addEventListener('click', () => {
-        const videoId = document.getElementById('youtubeId').value;
+        const url = document.getElementById('youtubeUrl').value;
+        const videoId = extractVideoId(url);
+        if (!videoId) {
+          alert('有効なYouTube動画URLを入力してください');
+          return;  // 動作を中断
+        }
         if (player) {
           player.loadVideoById(videoId);
         } else {
@@ -106,15 +136,51 @@
       });
     }
 
-    function adjustGame(playerKey, delta) {
-      if (playerKey === 'p1') {
-        p1Game = Math.max(0, p1Game + delta);
-        document.getElementById('p1Game').textContent = p1Game;
-      } else {
-        p2Game = Math.max(0, p2Game + delta);
-        document.getElementById('p2Game').textContent = p2Game;
+    function extractVideoId(url) {
+      try {
+        const parsedUrl = new URL(url);
+        if (parsedUrl.hostname === 'youtu.be') {
+          return parsedUrl.pathname.slice(1);
+        }
+        if (parsedUrl.hostname.includes('youtube.com')) {
+          return parsedUrl.searchParams.get('v');
+        }
+      } catch (e) {
+        alert('URLが正しくありません');
       }
-      if (document.getElementById('autoSubtitle').checked) addSubtitle();
+      return null;
+    }
+
+    function adjustGame(playerKey, delta) {
+        if (playerKey === 'p1') {
+            p1Game = Math.max(0, p1Game + delta);
+            document.getElementById('p1Game').textContent = p1Game;
+        } else {
+            p2Game = Math.max(0, p2Game + delta);
+            document.getElementById('p2Game').textContent = p2Game;
+        }
+
+        // ★ チェックONのときだけ → ポイントリセット & サーブ権切り替え
+        if (document.getElementById('autoSwitchServe').checked) {
+            // ポイントリセット
+            p1Point = 0;
+            p2Point = 0;
+            document.getElementById('p1Point').textContent = pointsOrder[p1Point];
+            document.getElementById('p2Point').textContent = pointsOrder[p2Point];
+
+            // サーブ権切り替え
+            const serveP1 = document.getElementById('serveP1');
+            const serveP2 = document.getElementById('serveP2');
+            if (serveP1.checked) {
+                serveP1.checked = false;
+                serveP2.checked = true;
+            } else {
+                serveP1.checked = true;
+                serveP2.checked = false;
+            }
+        }
+
+        if (document.getElementById('autoSubtitle').checked) addSubtitle();
     }
 
     function adjustPoint(playerKey, delta) {
