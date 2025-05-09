@@ -6,9 +6,16 @@
   <style>
     body { font-family: Arial; padding: 20px; }
     label { font-size: inherit; }
-    button { margin: 3px; }
+    button { margin: 2px; background-color: #333; border-radius: 30px; color: #fff; padding: 5px 10px; }
     .score-section { margin-bottom: 10px; }
     .subtitle-item { margin: 5px 0; }
+    .scores {font-size: 1.2em; padding: 5px}
+    #player iframe {
+      max-width: 100%;
+      height: auto;
+      display: block;
+      margin: 0 auto;
+    }
   </style>
 </head>
 <body>
@@ -40,12 +47,12 @@
     <tr>
       <td>ゲーム数</td>
       <td>
-        <span id="p1Game">0</span>
+        <span class="scores" id="p1Game">0</span>
         <button onclick="adjustGame('p1',1)">＋</button>
         <button onclick="adjustGame('p1',-1)">−</button>
       </td>
       <td>
-        <span id="p2Game">0</span>
+        <span class="scores" id="p2Game">0</span>
         <button onclick="adjustGame('p2',1)">＋</button>
         <button onclick="adjustGame('p2',-1)">−</button>
       </td>
@@ -53,17 +60,17 @@
     <tr>
       <td>ポイント</td>
       <td>
-        <span id="p1Point">0</span>
+        <span class="scores" id="p1Point">0</span>
         <button onclick="adjustPoint('p1',1)">＋</button>
         <button onclick="adjustPoint('p1',-1)">−</button>
       </td>
       <td>
-        <span id="p2Point">0</span>
+        <span class="scores" id="p2Point">0</span>
         <button onclick="adjustPoint('p2',1)">＋</button>
         <button onclick="adjustPoint('p2',-1)">−</button>
       </td>
     </tr>
-  </table>
+  </table><br>
 
   <label><input type="checkbox" id="autoSubtitle" checked>ゲーム数/ポイント変更時に字幕追加</label><br>
   <label><input type="checkbox" id="autoSwitchServe" checked>ゲーム数変更時にサーブ権切替とポイントリセット</label><br><br>
@@ -124,15 +131,7 @@
           alert('有効なYouTube動画URLを入力してください');
           return;  // 動作を中断
         }
-        if (player) {
-          player.loadVideoById(videoId);
-        } else {
-          player = new YT.Player('player', {
-            height: '360',
-            width: '640',
-            videoId: videoId
-          });
-        }
+        createOrResizePlayer(videoId);
       });
     }
 
@@ -348,6 +347,52 @@
       updateSubtitleList();
       updateVTT();
     }
+
+  function createOrResizePlayer(videoId) {
+      const maxWidth = 1024;
+      const windowWidth = window.innerWidth;
+      let width = Math.min(windowWidth, maxWidth);
+      let height = width * 9 / 16;
+
+      const maxHeight = window.innerHeight * 0.5; // 横持ちの高さ上限
+      if (height > maxHeight) {
+          height = maxHeight;
+          width = height * 16 / 9;
+      }
+
+      if (player) {
+          player.loadVideoById(videoId);
+          resizeIframe(width, height);
+      } else {
+          player = new YT.Player('player', {
+              height: height,
+              width: width,
+              videoId: videoId
+          });
+      }
+  }
+
+  function handleResize() {
+      if (player && player.setSize) {
+          const maxWidth = 1024;
+          const windowWidth = window.innerWidth;
+          let width = Math.min(windowWidth, maxWidth);
+          let height = width * 9 / 16;
+
+          const maxHeight = window.innerHeight * 0.5;
+          if (height > maxHeight) {
+              height = maxHeight;
+              width = height * 16 / 9;
+          }
+
+          player.setSize(width, height);
+      }
+  }
+
+  // イベント登録
+  window.addEventListener('resize', handleResize);
+  window.addEventListener('orientationchange', handleResize);
+  window.addEventListener('load', handleResize);
 
   </script>
 </body>
