@@ -2,57 +2,65 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Youtubeテニス動画スコア字幕作成アプリ</title>
+  <title>YouTubeテニス動画スコア字幕作成アプリ</title>
   <style>
-    body { font-family: Arial; padding: 20px; }
+    body { font-family: Arial, sans-serif; padding: 20px; margin: 0; }
     label { font-size: inherit; }
-    button { margin: 2px; background-color: #333; border-radius: 30px; color: #fff; padding: 5px 10px; }
-    .score-section { margin-bottom: 10px; }
-    .subtitle-item { margin: 5px 0; }
-    .scores {font-size: 1.2em; padding: 5px }
-    .score-buttons { display: flex; align-items: center; gap: 12px; }
-    .plus { background-color: #007bff; color: white; font-size: 1.2em; padding: 8px 14px; border: none; border-radius: 20px; cursor: pointer; }
-    .plus:hover { background-color: #0056b3; }
-    .action-primary { background-color: #007bff; color: white; font-size: 1.1em; padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 8px 4px; transition: background-color 0.2s ease; }
+    button { margin: 2px; background-color: #333; border-radius: 30px;
+             color: #fff; padding: 5px 10px; cursor: pointer; }
+    button:hover { background-color: #555; }
+
+    /* 強調ボタン */
+    .action-primary { background-color: #007bff; font-size: 1.1em;
+      padding: 10px 20px; border-radius: 25px; margin: 8px 4px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: background-color .2s; }
     .action-primary:hover { background-color: #0056b3; }
-    button:hover {background-color: #555}
-    #player { width: 100%; }
-    #player iframe {
-      width: 100%;
-      max-width: 100%;
-      display: block;
-      height: auto;
-    }
-    input[type="text"]#player1, input[type="text"]#player2 { font-size: 1.4em; padding: 6px 10px; width: 100%; box-sizing: border-box; }
-    input[type="radio"] { transform: scale(1.5); margin: 8px; cursor: pointer; }
-</style>
+
+    /* 加算ボタン */
+    .plus{ background-color:#007bff;font-size:1.2em;padding:8px 14px;border:none;
+           border-radius:20px;color:#fff;cursor:pointer; }
+    .plus:hover{ background-color:#0056b3; }
+
+    .scores{ font-size:1.2em;padding:5px; }
+    .score-buttons{ display:flex; align-items:center; gap:12px; }
+
+    input[type="text"]{ font-size:1.4em; padding:6px 10px; width:100%; box-sizing:border-box; }
+    input[type="radio"]{ transform:scale(1.5); margin:8px; cursor:pointer; }
+
+    #player{ width:100%; height:auto; }          /* 高さは JS で都度設定 */
+    #player iframe{ width:100%; height:100%; display:block; border:none; }
+
+  </style>
 </head>
 <body>
-  <h1>Youtubeテニス動画スコア字幕作成アプリ</h1>
+  <h1>YouTubeテニス動画スコア字幕作成アプリ</h1>
 
-  <label>YouTube動画URL: 
-    <input type="text" id="youtubeUrl" value="">
+  <!-- 動画URL入力 -->
+  <label>YouTube動画URL:
+    <input type="text" id="youtubeUrl" placeholder="https://www.youtube.com/watch?v=...">
   </label>
   <button id="loadBtn">動画読み込み</button><br><br>
 
-  <div id="player"></div>
+  <!-- YouTubeプレーヤー -->
+  <div id="player"></div><br>
 
+  <!-- 以降：スコア入力UI（省略せずに掲載） -->
   <table>
-    <tr>
-      <th></th>
-      <th>Player 1</th>
-      <th>Player 2</th>
-    </tr>
+    <tr><th></th><th>Player 1</th><th>Player 2</th></tr>
+
     <tr>
       <td>名前</td>
       <td><input type="text" id="player1" value="Player 1"></td>
       <td><input type="text" id="player2" value="Player 2"></td>
     </tr>
+
     <tr>
       <td>サーブ権</td>
       <td><input type="radio" name="server" id="serveP1" value="p1" checked></td>
       <td><input type="radio" name="server" id="serveP2" value="p2"></td>
     </tr>
+
+    <!-- ゲーム数 -->
     <tr>
       <td>ゲーム数</td>
       <td>
@@ -70,6 +78,8 @@
         </div>
       </td>
     </tr>
+
+    <!-- ポイント -->
     <tr>
       <td>ポイント</td>
       <td>
@@ -89,21 +99,25 @@
     </tr>
   </table><br>
 
+  <!-- オプション -->
   <label><input type="checkbox" id="autoSubtitle" checked>ゲーム数/ポイント変更時に字幕追加</label><br>
   <label><input type="checkbox" id="autoSwitchServe" checked>ゲーム数変更時にサーブ権切替とポイントリセット</label><br><br>
 
+  <!-- リセット系 -->
   <button onclick="resetGames()">ゲーム数リセット（両Player）</button>
   <button onclick="resetPoints()">ポイントリセット（両Player）</button><br><br>
 
+  <!-- 字幕生成 -->
   <button class="action-primary" onclick="addSubtitle()">字幕スタート</button>
   <button onclick="addSubtitleOff()">字幕オフ</button><br><br>
 
+  <!-- ダウンロード -->
   <button class="action-primary" onclick="downloadVTT()">字幕(VTT)ファイルをダウンロード</button><br><br>
 
   <input type="file" id="vttFileInput" accept=".vtt">
   <button onclick="loadVTTFile()">字幕(VTT)ファイル読み込み</button>
 
-  <div id="studioLinkContainer" style="margin-top: 10px;"></div>
+  <div id="studioLinkContainer" style="margin-top:10px;"></div>
 
   <h2>字幕リスト（時刻順）</h2>
   <ul id="subtitleList"></ul>
@@ -134,88 +148,84 @@
     <li>このアプリの利用によって生じた損害等の責任は負いません。</li>
   </ul>
 
+  <!-- YouTube IFrame API -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    let player;
-    const pointsOrder = ['0', '15', '30', '40', 'Adv'];
-    let p1Game = 0, p1Point = 0;
-    let p2Game = 0, p2Point = 0;
-    let subtitles = []; // { time, line1, line2 }
+    // ---------- 変数 ----------
+    let player = null;
+    const pointsOrder = ['0','15','30','40','Adv'];
+    let [p1Game, p2Game, p1Point, p2Point] = [0,0,0,0];
+    let subtitles = [];
 
-    function onYouTubeIframeAPIReady() {
-      document.getElementById('loadBtn').addEventListener('click', () => {
-        const url = document.getElementById('youtubeUrl').value;
-        const videoId = extractVideoId(url);
-        if (!videoId) {
-          alert('有効なYouTube動画URLを入力してください');
-          return;  // 動作を中断
-        }
-        createOrResizePlayer(videoId);
-        // ★ YouTube Studioの該当動画リンクを表示
-        const studioLinkContainer = document.getElementById('studioLinkContainer');
-        const studioLink = `https://studio.youtube.com/video/${videoId}/edit`;
-        studioLinkContainer.innerHTML = `<a href="${studioLink}" target="_blank" rel="noopener noreferrer">
-          🎬 この動画のYouTube Studioページ（字幕アップロード）
-        </a>`;
+    // ---------- YouTube API初期化 ----------
+    function onYouTubeIframeAPIReady(){
+      document.getElementById('loadBtn').onclick = () => {
+        const inputURL = document.getElementById('youtubeUrl').value.trim();
+        const vid = extractVideoId(inputURL);
+        if(!vid){ alert('有効なURLを入力してください'); return; }
+        if(!player) createPlayer(vid);
+        else        player.loadVideoById(vid);
+        resizePlayer(); // 生成直後もサイズ調整
+        // Studioリンク
+        document.getElementById('studioLinkContainer').innerHTML =
+          `<a href="https://studio.youtube.com/video/${vid}/edit" target="_blank" rel="noopener noreferrer">
+             🎬 この動画のYouTube Studioページ（字幕アップロード）
+           </a>`;
+      };
+    }
+
+    // ---------- プレーヤー生成 ----------
+    function createPlayer(videoId){
+      player = new YT.Player('player',{
+        videoId,
+        events:{ onReady: resizePlayer } // APIがreadyになったらリサイズ
       });
     }
 
-    function extractVideoId(url) {
-      try {
-        const parsedUrl = new URL(url);
-        if (parsedUrl.hostname === 'youtu.be') {
-          return parsedUrl.pathname.slice(1);
-        }
-        if (parsedUrl.hostname.includes('youtube.com')) {
-          return parsedUrl.searchParams.get('v');
-        }
-      } catch (e) {
-        alert('URLが正しくありません');
-      }
+    // ---------- リサイズ共通処理 ----------
+    function resizePlayer(){
+      if(!player || !player.setSize) return;
+      const w = window.innerWidth;
+      let   h = Math.round(w * 9/16);
+      if(h > window.innerHeight){ h = window.innerHeight; } // はみ出し防止
+      player.setSize(w, h);
+      document.getElementById('player').style.height = h + 'px';
+    }
+
+    // ウィンドウリサイズ・端末回転・初回ロード
+    ['resize','orientationchange','load'].forEach(ev =>
+      window.addEventListener(ev, resizePlayer));
+
+    // ---------- URLからvideoId抽出 ----------
+    function extractVideoId(url){
+      try{
+        const u = new URL(url);
+        if(u.hostname === 'youtu.be')      return u.pathname.slice(1);
+        if(u.hostname.includes('youtube')) return u.searchParams.get('v');
+      }catch(e){ }
       return null;
     }
 
-    function adjustGame(playerKey, delta) {
-        if (playerKey === 'p1') {
-            p1Game = Math.max(0, p1Game + delta);
-            document.getElementById('p1Game').textContent = p1Game;
-        } else {
-            p2Game = Math.max(0, p2Game + delta);
-            document.getElementById('p2Game').textContent = p2Game;
-        }
+    // ---------- スコア操作（adjustGame / adjustPoint など既存ロジックはそのまま） ----------
+    function adjustGame(key,delta){
+      if(key==='p1'){ p1Game=Math.max(0,p1Game+delta); document.getElementById('p1Game').textContent=p1Game; }
+      else          { p2Game=Math.max(0,p2Game+delta); document.getElementById('p2Game').textContent=p2Game; }
 
-        // ★ チェックONのときだけ → ポイントリセット & サーブ権切り替え
-        if (document.getElementById('autoSwitchServe').checked) {
-            // ポイントリセット
-            p1Point = 0;
-            p2Point = 0;
-            document.getElementById('p1Point').textContent = pointsOrder[p1Point];
-            document.getElementById('p2Point').textContent = pointsOrder[p2Point];
-
-            // サーブ権切り替え
-            const serveP1 = document.getElementById('serveP1');
-            const serveP2 = document.getElementById('serveP2');
-            if (serveP1.checked) {
-                serveP1.checked = false;
-                serveP2.checked = true;
-            } else {
-                serveP1.checked = true;
-                serveP2.checked = false;
-            }
-        }
-
-        if (document.getElementById('autoSubtitle').checked) addSubtitle();
+      if(document.getElementById('autoSwitchServe').checked){
+        p1Point=p2Point=0;
+        document.getElementById('p1Point').textContent=pointsOrder[p1Point];
+        document.getElementById('p2Point').textContent=pointsOrder[p2Point];
+        toggleServe();
+      }
+      if(document.getElementById('autoSubtitle').checked) addSubtitle();
     }
 
-    function adjustPoint(playerKey, delta) {
-      if (playerKey === 'p1') {
-        p1Point = (p1Point + delta + pointsOrder.length) % pointsOrder.length;
-        document.getElementById('p1Point').textContent = pointsOrder[p1Point];
-      } else {
-        p2Point = (p2Point + delta + pointsOrder.length) % pointsOrder.length;
-        document.getElementById('p2Point').textContent = pointsOrder[p2Point];
-      }
-      if (document.getElementById('autoSubtitle').checked) addSubtitle();
+    function adjustPoint(key,delta){
+      if(key==='p1'){ p1Point=(p1Point+delta+pointsOrder.length)%pointsOrder.length;
+                      document.getElementById('p1Point').textContent=pointsOrder[p1Point]; }
+      else          { p2Point=(p2Point+delta+pointsOrder.length)%pointsOrder.length;
+                      document.getElementById('p2Point').textContent=pointsOrder[p2Point]; }
+      if(document.getElementById('autoSubtitle').checked) addSubtitle();
     }
 
     function resetGames() {
@@ -232,11 +242,15 @@
       document.getElementById('p2Point').textContent = pointsOrder[p2Point];
     }
 
-    function toggleServe(playerKey) {
-      if (playerKey === 'p1') {
-        document.getElementById('serveP2').checked = false;
+    function toggleServe() {
+      const serveP1 = document.getElementById('serveP1');
+      const serveP2 = document.getElementById('serveP2');
+      if (serveP1.checked) {
+          serveP1.checked = false;
+          serveP2.checked = true;
       } else {
-        document.getElementById('serveP1').checked = false;
+          serveP1.checked = true;
+          serveP2.checked = false;
       }
     }
 
@@ -372,54 +386,6 @@
       updateSubtitleList();
       updateVTT();
     }
-
-  function createOrResizePlayer(videoId) {
-      const width = window.innerWidth; // ← 画面幅そのまま
-      let height = width * 9 / 16;     // アスペクト比 16:9
-//      const maxWidth = 1024;
-//      const windowWidth = window.innerWidth;
-//      let width = Math.min(windowWidth, maxWidth);
-//      let height = width * 9 / 16;
-
-//      const maxHeight = window.innerHeight * 0.5; // 横持ちの高さ上限
-//      if (height > maxHeight) {
-//          height = maxHeight;
-//          width = height * 16 / 9;
-//      }
-
-      if (player) {
-          player.loadVideoById(videoId);
-          resizeIframe(width, height);
-      } else {
-          player = new YT.Player('player', {
-              height: height,
-              width: width,
-              videoId: videoId
-          });
-      }
-  }
-
-  function handleResize() {
-      if (player && player.setSize) {
-          const maxWidth = 1024;
-          const windowWidth = window.innerWidth;
-          let width = Math.min(windowWidth, maxWidth);
-          let height = width * 9 / 16;
-
-          const maxHeight = window.innerHeight * 0.5;
-          if (height > maxHeight) {
-              height = maxHeight;
-              width = height * 16 / 9;
-          }
-
-          player.setSize(width, height);
-      }
-  }
-
-  // イベント登録
-  window.addEventListener('resize', handleResize);
-  window.addEventListener('orientationchange', handleResize);
-  window.addEventListener('load', handleResize);
 
   </script>
 </body>
