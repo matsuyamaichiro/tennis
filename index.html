@@ -9,14 +9,23 @@
     button { margin: 2px; background-color: #333; border-radius: 30px; color: #fff; padding: 5px 10px; }
     .score-section { margin-bottom: 10px; }
     .subtitle-item { margin: 5px 0; }
-    .scores {font-size: 1.2em; padding: 5px}
+    .scores {font-size: 1.2em; padding: 5px }
+    .score-buttons { display: flex; align-items: center; gap: 12px; }
+    .plus { background-color: #007bff; color: white; font-size: 1.2em; padding: 8px 14px; border: none; border-radius: 20px; cursor: pointer; }
+    .plus:hover { background-color: #0056b3; }
+    .action-primary { background-color: #007bff; color: white; font-size: 1.1em; padding: 10px 20px; border: none; border-radius: 25px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin: 8px 4px; transition: background-color 0.2s ease; }
+    .action-primary:hover { background-color: #0056b3; }
+    button:hover {background-color: #555}
+    #player { width: 100%; }
     #player iframe {
+      width: 100%;
       max-width: 100%;
-      height: auto;
       display: block;
-      margin: 0 auto;
+      height: auto;
     }
-  </style>
+    input[type="text"]#player1, input[type="text"]#player2 { font-size: 1.4em; padding: 6px 10px; width: 100%; box-sizing: border-box; }
+    input[type="radio"] { transform: scale(1.5); margin: 8px; cursor: pointer; }
+</style>
 </head>
 <body>
   <h1>Youtubeテニス動画スコア字幕作成アプリ</h1>
@@ -26,7 +35,7 @@
   </label>
   <button id="loadBtn">動画読み込み</button><br><br>
 
-  <div id="player"></div><br>
+  <div id="player"></div>
 
   <table>
     <tr>
@@ -47,27 +56,35 @@
     <tr>
       <td>ゲーム数</td>
       <td>
-        <span class="scores" id="p1Game">0</span>
-        <button onclick="adjustGame('p1',1)">＋</button>
-        <button onclick="adjustGame('p1',-1)">−</button>
+        <div class="score-buttons">
+          <span class="scores" id="p1Game">0</span>
+          <button class="plus" onclick="adjustGame('p1',1)">＋</button>
+          <button onclick="adjustGame('p1',-1)">−</button>
+        </div>
       </td>
       <td>
-        <span class="scores" id="p2Game">0</span>
-        <button onclick="adjustGame('p2',1)">＋</button>
-        <button onclick="adjustGame('p2',-1)">−</button>
+        <div class="score-buttons">
+          <span class="scores" id="p2Game">0</span>
+          <button class="plus" onclick="adjustGame('p2',1)">＋</button>
+          <button onclick="adjustGame('p2',-1)">−</button>
+        </div>
       </td>
     </tr>
     <tr>
       <td>ポイント</td>
       <td>
-        <span class="scores" id="p1Point">0</span>
-        <button onclick="adjustPoint('p1',1)">＋</button>
-        <button onclick="adjustPoint('p1',-1)">−</button>
+        <div class="score-buttons">
+          <span class="scores" id="p1Point">0</span>
+          <button class="plus" onclick="adjustPoint('p1',1)">＋</button>
+          <button onclick="adjustPoint('p1',-1)">−</button>
+        </div>
       </td>
       <td>
-        <span class="scores" id="p2Point">0</span>
-        <button onclick="adjustPoint('p2',1)">＋</button>
-        <button onclick="adjustPoint('p2',-1)">−</button>
+        <div class="score-buttons">
+          <span class="scores" id="p2Point">0</span>
+          <button class="plus" onclick="adjustPoint('p2',1)">＋</button>
+          <button onclick="adjustPoint('p2',-1)">−</button>
+        </div>
       </td>
     </tr>
   </table><br>
@@ -78,13 +95,15 @@
   <button onclick="resetGames()">ゲーム数リセット（両Player）</button>
   <button onclick="resetPoints()">ポイントリセット（両Player）</button><br><br>
 
-  <button onclick="addSubtitle()">現在スコアを字幕に入れる</button>
+  <button class="action-primary" onclick="addSubtitle()">字幕スタート</button>
   <button onclick="addSubtitleOff()">字幕オフ</button><br><br>
 
-  <button onclick="downloadVTT()">字幕(VTT)ファイルをダウンロード</button><br><br>
+  <button class="action-primary" onclick="downloadVTT()">字幕(VTT)ファイルをダウンロード</button><br><br>
 
   <input type="file" id="vttFileInput" accept=".vtt">
   <button onclick="loadVTTFile()">字幕(VTT)ファイル読み込み</button>
+
+  <div id="studioLinkContainer" style="margin-top: 10px;"></div>
 
   <h2>字幕リスト（時刻順）</h2>
   <ul id="subtitleList"></ul>
@@ -96,9 +115,9 @@
   <h2>このアプリの使い方</h2>
   <ol>
     <li>YouTubeにアップロードしたテニス動画のURLを入力して「動画読み込み」ボタンを押します。</li>
-    <li>Player1とPlayer2の名前（ダブルスなら２人分）を入力します。</li>
+    <li>Player1とPlayer2の名前（ダブルスなら"錦織・西岡"のように２人分）を入力します。</li>
     <li>最初にサーブ権を持つPlayerにチェックを入れます。</li>
-    <li>試合開始時に0-0の状態で「字幕を入れる」ボタンを押し、最初の字幕を追加します。</li>
+    <li>試合開始時に0-0の状態で「字幕スタート」ボタンを押し、最初の字幕を追加します。</li>
     <li>動画を再生・一時停止しながら、ポイント数を「+」「−」ボタンで加減すると字幕が更新されます。</li>
     <li>ゲームを「+」「-」ボタンで加減すると、サーブ権が入れ替わり、ポイントがリセットされ、字幕が更新されます。</li>
     <li>ゲーム終了時など、字幕を消したい場合は「字幕オフ」ボタンで字幕を非表示にします。</li>
@@ -132,6 +151,12 @@
           return;  // 動作を中断
         }
         createOrResizePlayer(videoId);
+        // ★ YouTube Studioの該当動画リンクを表示
+        const studioLinkContainer = document.getElementById('studioLinkContainer');
+        const studioLink = `https://studio.youtube.com/video/${videoId}/edit`;
+        studioLinkContainer.innerHTML = `<a href="${studioLink}" target="_blank" rel="noopener noreferrer">
+          🎬 この動画のYouTube Studioページ（字幕アップロード）
+        </a>`;
       });
     }
 
@@ -349,16 +374,18 @@
     }
 
   function createOrResizePlayer(videoId) {
-      const maxWidth = 1024;
-      const windowWidth = window.innerWidth;
-      let width = Math.min(windowWidth, maxWidth);
-      let height = width * 9 / 16;
+      const width = window.innerWidth; // ← 画面幅そのまま
+      let height = width * 9 / 16;     // アスペクト比 16:9
+//      const maxWidth = 1024;
+//      const windowWidth = window.innerWidth;
+//      let width = Math.min(windowWidth, maxWidth);
+//      let height = width * 9 / 16;
 
-      const maxHeight = window.innerHeight * 0.5; // 横持ちの高さ上限
-      if (height > maxHeight) {
-          height = maxHeight;
-          width = height * 16 / 9;
-      }
+//      const maxHeight = window.innerHeight * 0.5; // 横持ちの高さ上限
+//      if (height > maxHeight) {
+//          height = maxHeight;
+//          width = height * 16 / 9;
+//      }
 
       if (player) {
           player.loadVideoById(videoId);
