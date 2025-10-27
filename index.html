@@ -52,13 +52,15 @@
       <td>名前</td>
       <td><input type="text" id="player1" value="Player 1"></td>
       <td><input type="text" id="player2" value="Player 2"></td>
+      <td></td>
     </tr>
 
     <tr>
       <td>サーブ権</td>
       <td><input type="radio" name="server" id="serveP1" value="p1" checked></td>
       <td><input type="radio" name="server" id="serveP2" value="p2"></td>
-    </tr>
+      <td></td>
+   </tr>
 
     <!-- ゲーム数 -->
     <tr>
@@ -77,6 +79,7 @@
           <button onclick="adjustGame('p2',-1)">−</button>
         </div>
       </td>
+      <td></td>
     </tr>
 
     <!-- ポイント -->
@@ -95,6 +98,9 @@
           <button class="plus" onclick="adjustPoint('p2',1)">＋</button>
           <button onclick="adjustPoint('p2',-1)">−</button>
         </div>
+      </td>
+      <td>
+        <input type="checkbox" id="tiebreakMode"> タイブレーク
       </td>
     </tr>
   </table><br>
@@ -133,9 +139,10 @@
     <li>最初にサーブ権を持つPlayerにチェックを入れます。</li>
     <li>試合開始時に0-0の状態で「字幕スタート」ボタンを押し、最初の字幕を追加します。</li>
     <li>動画を再生・一時停止しながら、ポイント数を「+」「−」ボタンで加減すると字幕が更新されます。</li>
+    <li>タイブレークのゲームは、予めタイブレークのチェックボックスをオンにして下さい。</li>
     <li>ゲームを「+」「-」ボタンで加減すると、サーブ権が入れ替わり、ポイントがリセットされ、字幕が更新されます。</li>
     <li>ゲーム終了時など、字幕を消したい場合は「字幕オフ」ボタンで字幕を非表示にします。</li>
-    <li>動画内で別の試合に切り替わる場合、「ゲーム数リセット」ボタンとと「ポイントリセット」ボタンを押して、Playerの名前指定から再度実施してください。</li>
+    <li>動画内で別の試合に切り替わる場合、「ゲーム数リセット」ボタンと「ポイントリセット」ボタンを押して、Playerの名前指定から再度実施してください。</li>
     <li>最後に「字幕(VTT)ファイルをダウンロード」ボタンで .vtt ファイルを保存します。</li>
     <li>ダウンロードした .vtt ファイルをYouTube Studioで動画に字幕としてアップロードしてください。</li>
   </ol>
@@ -155,6 +162,7 @@
     let player = null;
     const pointsOrder = ['0','15','30','40','Adv'];
     let [p1Game, p2Game, p1Point, p2Point] = [0,0,0,0];
+    let isTiebreak = false;
     let subtitles = [];
 
     // ---------- YouTube API初期化 ----------
@@ -171,6 +179,11 @@
           `<a href="https://studio.youtube.com/video/${vid}/edit" target="_blank" rel="noopener noreferrer">
              🎬 この動画のYouTube Studioページ（字幕アップロード）
            </a>`;
+      };
+
+      document.getElementById('tiebreakMode').onchange = e => {
+        isTiebreak = e.target.checked;
+        refreshPointDisplays();
       };
     }
 
@@ -221,10 +234,17 @@
     }
 
     function adjustPoint(key,delta){
-      if(key==='p1'){ p1Point=(p1Point+delta+pointsOrder.length)%pointsOrder.length;
-                      document.getElementById('p1Point').textContent=pointsOrder[p1Point]; }
-      else          { p2Point=(p2Point+delta+pointsOrder.length)%pointsOrder.length;
-                      document.getElementById('p2Point').textContent=pointsOrder[p2Point]; }
+      if(isTiebreak){
+        if(key==='p1'){ p1Point = Math.max(0,p1Point+delta);
+                        document.getElementById('p1Point').textContent=p1Point; }
+        else          { p2Point = Math.max(0,p2Point+delta);
+                        document.getElementById('p2Point').textContent=p2Point; }
+      } else {
+        if(key==='p1'){ p1Point=(p1Point+delta+pointsOrder.length)%pointsOrder.length;
+                        document.getElementById('p1Point').textContent=pointsOrder[p1Point]; }
+        else          { p2Point=(p2Point+delta+pointsOrder.length)%pointsOrder.length;
+                        document.getElementById('p2Point').textContent=pointsOrder[p2Point]; }
+      }
       if(document.getElementById('autoSubtitle').checked) addSubtitle();
     }
 
@@ -238,8 +258,19 @@
     function resetPoints() {
       p1Point = 0;
       p2Point = 0;
-      document.getElementById('p1Point').textContent = pointsOrder[p1Point];
-      document.getElementById('p2Point').textContent = pointsOrder[p2Point];
+      refreshPointDisplays();
+    }
+
+    function refreshPointDisplays() {
+      if (isTiebreak) {
+        // タイブレーク中は生の数字を表示
+        document.getElementById('p1Point').textContent = String(p1Point);
+        document.getElementById('p2Point').textContent = String(p2Point);
+      } else {
+        // 通常時は 0 / 15 / 30 / 40 / Adv 表示
+        document.getElementById('p1Point').textContent = pointsOrder[p1Point];
+        document.getElementById('p2Point').textContent = pointsOrder[p2Point];
+      }
     }
 
     function toggleServe() {
@@ -267,8 +298,11 @@
         p2Name = '*' + p2Name;
       }
 
-      const line1 = `${p1Name}: ${p1Game} ${pointsOrder[p1Point]}`;
-      const line2 = `${p2Name}: ${p2Game} ${pointsOrder[p2Point]}`;
+      const p1Pt = isTiebreak ? String(p1Point) : pointsOrder[p1Point];
+      const p2Pt = isTiebreak ? String(p2Point) : pointsOrder[p2Point];
+
+      const line1 = `${p1Name}: ${p1Game} ${p1Pt}`;
+      const line2 = `${p2Name}: ${p2Game} ${p2Pt}`;
 
       subtitles.push({ time, line1, line2 });
       updateSubtitleList();
