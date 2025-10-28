@@ -139,7 +139,7 @@
     <li>最初にサーブ権を持つPlayerにチェックを入れます。</li>
     <li>試合開始時に0-0の状態で「字幕スタート」ボタンを押し、最初の字幕を追加します。</li>
     <li>動画を再生・一時停止しながら、ポイント数を「+」「−」ボタンで加減すると字幕が更新されます。</li>
-    <li>タイブレークのゲームは、予めタイブレークのチェックボックスをオンにして下さい。</li>
+    <li>タイブレークのゲームは、予めタイブレークのチェックボックスをオンにして下さい。奇数ポイント毎にサーブ権が入れ替わります。</li>
     <li>ゲームを「+」「-」ボタンで加減すると、サーブ権が入れ替わり、ポイントがリセットされ、字幕が更新されます。</li>
     <li>ゲーム終了時など、字幕を消したい場合は「字幕オフ」ボタンで字幕を非表示にします。</li>
     <li>動画内で別の試合に切り替わる場合、「ゲーム数リセット」ボタンと「ポイントリセット」ボタンを押して、Playerの名前指定から再度実施してください。</li>
@@ -225,10 +225,20 @@
       else          { p2Game=Math.max(0,p2Game+delta); document.getElementById('p2Game').textContent=p2Game; }
 
       if(document.getElementById('autoSwitchServe').checked){
-        p1Point=p2Point=0;
-        document.getElementById('p1Point').textContent=pointsOrder[p1Point];
-        document.getElementById('p2Point').textContent=pointsOrder[p2Point];
-        toggleServe();
+        if(isTiebreak){
+          mod4 = (p1Point + p2Point) % 4;
+          p1Point=p2Point=0;
+          document.getElementById('p1Point').textContent=p1Point;
+          document.getElementById('p2Point').textContent=p2Point;
+          if(mod4 === 0 || mod4 === 3){
+            toggleServe(); // タイブレーク時はサーブ開始側から相手側にサーブ権を切り替え
+          }
+        } else {
+          p1Point=p2Point=0;
+          document.getElementById('p1Point').textContent=pointsOrder[p1Point];
+          document.getElementById('p2Point').textContent=pointsOrder[p2Point];
+          toggleServe();
+        }
       }
       if(document.getElementById('autoSubtitle').checked) addSubtitle();
     }
@@ -239,6 +249,9 @@
                         document.getElementById('p1Point').textContent=p1Point; }
         else          { p2Point = Math.max(0,p2Point+delta);
                         document.getElementById('p2Point').textContent=p2Point; }
+        if(document.getElementById('autoSwitchServe').checked){
+          if((p1Point + p2Point) % 2 != 0){ toggleServe(); }
+        }
       } else {
         if(key==='p1'){ p1Point=(p1Point+delta+pointsOrder.length)%pointsOrder.length;
                         document.getElementById('p1Point').textContent=pointsOrder[p1Point]; }
