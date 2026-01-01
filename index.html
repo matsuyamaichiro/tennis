@@ -94,6 +94,15 @@
       display: block;
       border: none;
     }
+
+    .past-set {
+      background-color: #eeeeee;
+    }
+
+    .past-set td {
+      padding-top: 5px;
+      padding-bottom: 5px;
+    }
   </style>
 </head>
 
@@ -132,7 +141,10 @@
     </tr>
 
     <!-- ゲーム数 -->
-    <tr>
+    <!-- 過去のセットがここに追加されます -->
+    <!-- ゲーム数 -->
+    <!-- 過去のセットがここに追加されます -->
+    <tr id="currentGameRow">
       <td>ゲーム数</td>
       <td>
         <div class="score-buttons">
@@ -234,7 +246,6 @@
     let player = null;
     const pointsOrder = ['0', '15', '30', '40', 'Adv'];
     let [p1Game, p2Game, p1Point, p2Point] = [0, 0, 0, 0];
-    let previousSets = []; // 完了したセットのスコア履歴 [{p1:6, p2:4}, ...]
     let isTiebreak = false;
     let subtitles = [];
 
@@ -350,8 +361,36 @@
     }
 
     function finishSet() {
-      // 現在のセットスコアを履歴に保存
-      previousSets.push({ p1: p1Game, p2: p2Game });
+      // 現在のセットスコアを過去のセットに追加
+      const newRow = document.createElement('tr');
+      newRow.className = 'past-set';
+
+      const setNumber = document.querySelectorAll('.past-set').length + 1;
+
+      newRow.innerHTML = `
+        <td>セット${setNumber}</td>
+        <td>
+          <div class="score-buttons">
+            <span class="scores p1-past-score">${p1Game}</span>
+            <button class="plus" onclick="adjustPastGame(this, 'p1', 1)">＋</button>
+            <button onclick="adjustPastGame(this, 'p1', -1)">−</button>
+          </div>
+        </td>
+        <td>
+          <div class="score-buttons">
+            <span class="scores p2-past-score">${p2Game}</span>
+            <button class="plus" onclick="adjustPastGame(this, 'p2', 1)">＋</button>
+            <button onclick="adjustPastGame(this, 'p2', -1)">−</button>
+          </div>
+        </td>
+        <td>
+          <button onclick="deletePastSet(this)" style="background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 15px; border: none; cursor: pointer;">削除</button>
+        </td>
+      `;
+
+      // 現在の行の前に新しい行を挿入
+      const currentRow = document.getElementById('currentGameRow');
+      currentRow.parentNode.insertBefore(newRow, currentRow);
 
       // ゲーム数・ポイントリセット
       resetGames();
@@ -362,21 +401,43 @@
       document.getElementById('tiebreakMode').checked = false;
       refreshPointDisplays();
 
-      // 必要に応じてサーブ権などはそのまま or リセット？
-      // 通常はセット変わっても順番通りだが、ここでは自動切替に任せるか、
-      // ユーザーが手動で調整することを想定。とりあえずそのままで。
+      if (document.getElementById('autoSubtitle').checked) addSubtitle();
+    }
 
-      // セット終了時も字幕を出したい場合はここでも addSubtitle() 呼ぶ？
-      // ただし 0-0 になっているので、出すなら "6-4 0-0" のような表示になる。
+    function adjustPastGame(btn, player, delta) {
+      const parentTd = btn.parentNode; // .score-buttons
+      const scoreSpan = parentTd.querySelector('.scores');
+      let val = parseInt(scoreSpan.textContent, 10);
+      val = Math.max(0, val + delta);
+      scoreSpan.textContent = val;
+
+      if (document.getElementById('autoSubtitle').checked) addSubtitle();
+    }
+
+    function deletePastSet(btn) {
+      if (!confirm('このセットを削除しますか？')) return;
+      const row = btn.parentNode.parentNode;
+      row.remove();
+
+      // Renumber sets (Optional, but nice for "Set N" labels)
+      const rows = document.querySelectorAll('.past-set');
+      rows.forEach((r, i) => {
+        r.cells[0].textContent = `Set ${i + 1}`;
+      });
+
       if (document.getElementById('autoSubtitle').checked) addSubtitle();
     }
 
     function resetMatch() {
       if (!confirm('本当に試合全体をリセットしますか？\n（名前以外のスコア・セット履歴が全て消えます）')) return;
-      previousSets = [];
+
+      // Remove all past set rows
+      const pastSets = document.querySelectorAll('.past-set');
+      pastSets.forEach(r => r.remove());
+
       resetGames();
       resetPoints();
-      // サーブ権も初期値(Player1)に戻すなら以下
+
       document.getElementById('serveP1').checked = true;
       document.getElementById('serveP2').checked = false;
       isTiebreak = false;
@@ -430,11 +491,17 @@
       const p1Pt = isTiebreak ? String(p1Point) : pointsOrder[p1Point];
       const p2Pt = isTiebreak ? String(p2Point) : pointsOrder[p2Point];
 
-      // 過去のセットスコア文字列作成
-      let p1SetsStr = previousSets.map(s => s.p1).join(' ');
-      let p2SetsStr = previousSets.map(s => s.p2).join(' ');
-      if (p1SetsStr) p1SetsStr += ' ';
-      if (p2SetsStr) p2SetsStr += ' ';
+      // Retrieve scores from DOM rows
+      let p1SetsStr = '';
+      let p2SetsStr = '';
+
+      const pastRows = document.querySelectorAll('.past-set');
+      pastRows.forEach(row => {
+        const p1Score = row.querySelector('.p1-past-score').textContent;
+        const p2Score = row.querySelector('.p2-past-score').textContent;
+        p1SetsStr += p1Score + ' ';
+        p2SetsStr += p2Score + ' ';
+      });
 
       const line1 = `${p1Name}: ${p1SetsStr}${p1Game} ${p1Pt}`;
       const line2 = `${p2Name}: ${p2SetsStr}${p2Game} ${p2Pt}`;
